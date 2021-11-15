@@ -157,7 +157,15 @@ void LCD(void)
 	/*Calculo de la potencia activa:*/
 	P();
 
+	/*Buffers para mostrar valores de variables:*/
+	char buffActivePow[BufferLength];
 
+	/*Refresco del LCD:*/
+	CLEAR_LCD_2x16(LCD_2X16);
+
+	/*Mostrar potencia activa:*/
+	sprintf(buffActivePow, "P=%.1f W", activePow);
+	PRINT_LCD_2x16(LCD_2X16, 0, 0, buffActivePow);
 
 	/*Reseteo de las variables de calculo de potencia:*/
 	activePow = 0.0f;
