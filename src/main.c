@@ -113,8 +113,34 @@ void ADC_PROCESSING(void)
 /*Calculo de la potencia activa:*/
 void P(void)
 {
+	/*Variable para el conteo de ciclos:*/
 	uint32_t i = 0;
 
+	/*P es la sumatoria del producto de valores instantaneos de tension y corriente:*/
 	for (i = 0; i < maxSampling; i++)
 		activePow = (float) activePow + voltValueAna[i]*currValueAna[i];
+}
+
+/*Calculo de la potencia aparente:*/
+void S(void)
+{
+	/*Variable para el conteo de ciclos:*/
+	uint32_t i = 0;
+
+	/*Modulo de la tension:*/
+	float	 voltMod = 0.0f;
+
+	/*Modulo de la corriente:*/
+	float 	 currMod = 0.0f;
+
+	/*S es el producto de los modulos de tension y corriente:*/
+	for (i = 0; i < maxSampling; i++)
+	{
+		/*Calculo del modulo de la tension:*/
+		voltMod = voltMod + sqrt(voltValueAna[i]*voltValueAna[i]);
+		/*Calculo del modulo de la corriente:*/
+		currMod = currMod + sqrt(voltValueAna[i]*currValueAna[i]);
+		/*Calculo potencia aparente:*/
+		apparentPow = apparentPow + voltMod*currMod;
+	}
 }

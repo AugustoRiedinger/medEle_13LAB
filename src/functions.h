@@ -141,6 +141,9 @@ void LCD(void);
 /*Calcular la potencia activa:*/
 void P(void);
 
+/*Calcular potencia aparente:*/
+void S(void);
+
 /*------------------------------------------------------------------------------
 DECLARACION VARIABLES GLOBALES DE MAIN.C:
 ------------------------------------------------------------------------------*/
@@ -161,6 +164,9 @@ float 	 currValueAna[maxSampling];
 
 /*Variable para almacenar la potencia activa:*/
 float 	 activePow = 0.0f;
+
+/*Variable para almacenar la potencia aparente:*/
+float 	apparentPow = 0.0f;
 
 /*------------------------------------------------------------------------------
 DECLARACION FUNCIONES DE FUNCTIONS.C :
