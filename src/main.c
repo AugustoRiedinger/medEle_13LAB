@@ -190,7 +190,7 @@ void Q(void)
 {
 	/*Q se calcula a partir del triangulo de potencias:*/
 	/*S^2 = P^2 + Q^2*/
-	reactivePow = apparentPow*apparentPow - activePow*activePow;
+	reactivePow = sqrt(apparentPow*apparentPow - activePow*activePow);
 }
 
 /*Calculo del coseno de theta:*/
