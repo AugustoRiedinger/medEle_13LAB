@@ -98,6 +98,8 @@ void ADC_PROCESSING(void)
 	/*Almacenar dato de corriente digital instantanea:*/
 	currValueDig[instant] = READ_ADC2();
 
+	/*TODO: BUSCAR EL VALOR MAXIMO DE CORRIENTE PARA LA CONVERSION.*/
+
 	/*Conversion y almacenamiento de dato de corriente analogica:*/
 	currValueAna[instant] = (float) currValueDig[instant] * maxCurrValue / maxDigValue;
 
@@ -132,6 +134,8 @@ void S(void)
 
 	/*Modulo de la corriente:*/
 	float 	 currMod = 0.0f;
+
+	/*TODO: BUSCAR COMO CALCULAR EL MODULO DE UN ARREGLO.*/
 
 	/*S es el producto de los modulos de tension y corriente:*/
 	for (i = 0; i < maxSampling; i++)
