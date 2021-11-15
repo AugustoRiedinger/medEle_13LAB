@@ -17,18 +17,25 @@
 LIBRERIAS:
 ------------------------------------------------------------------------------*/
 #include "functions.h"
+#include "connections.h"
 
 /*------------------------------------------------------------------------------
 DEFINICIONES LOCALES:
 ------------------------------------------------------------------------------*/
-/*Pines del ADC - PC0:*/
-#define ADC_Port GPIOC
-#define ADC_Pin  GPIO_Pin_0
-
 /*Base de tiempo para el TIM3:*/
 #define TimeBase 200e3 //[mseg]
 /*Frecuencia de interrupcion del TIM3:*/
 #define FS  2500 //[Hz]
+
+/*Pines del LCD:*/
+LCD_2X16_t LCD_2X16[] = {
+			// Name  , PORT ,   PIN      ,         CLOCK       ,   Init
+			{ TLCD_RS, GPIOC, GPIO_Pin_10, RCC_AHB1Periph_GPIOC, Bit_RESET },
+			{ TLCD_E,  GPIOC, GPIO_Pin_11, RCC_AHB1Periph_GPIOC, Bit_RESET },
+			{ TLCD_D4, GPIOC, GPIO_Pin_12, RCC_AHB1Periph_GPIOC, Bit_RESET },
+			{ TLCD_D5, GPIOD, GPIO_Pin_2,  RCC_AHB1Periph_GPIOD, Bit_RESET },
+			{ TLCD_D6, GPIOF, GPIO_Pin_6,  RCC_AHB1Periph_GPIOF, Bit_RESET },
+			{ TLCD_D7, GPIOF, GPIO_Pin_7,  RCC_AHB1Periph_GPIOF, Bit_RESET }, };
 
 /*------------------------------------------------------------------------------
 VARIABLES GLOBALES:
@@ -41,8 +48,11 @@ CONFIGURACION DEL MICRO:
 ------------------------------------------------------------------------------*/
 	SystemInit();
 
+	/*Inicializacion del DISPLAY LCD:*/
+	INIT_LCD_2x16(LCD_2X16);
+
 	/*Inicializacion del ADC:*/
-	INIT_ADC(ADC_Port, ADC_Pin);
+	INIT_ADC();
 
 	/*Inicialización del TIM3:*/
 	INIT_TIM3();

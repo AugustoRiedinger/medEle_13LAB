@@ -1,3 +1,12 @@
 .project
 .cproject
 .settings/
+Debug/13LAB.elf
+Debug/13LAB.list
+Debug/13LAB.map
+Debug/src/main.o
+Debug/src/main.su
+Debug/src/system_stm32f4xx.o
+Debug/src/functions.o
+Debug/src/functions.su
+Debug/src/mi_libreria.su
