@@ -69,30 +69,39 @@ void LCD(void)
 	/*Reseteo de la variable del TS:*/
 	lcd = 0;
 
-	/*Calculo de la potencia activa:*/
-	P();
-
-	/*Calculo de la potencia aparente:*/
-	S();
-
 	/*Buffers para mostrar valores de variables:*/
-	char buffActivePow[lcdBufferLen];
+	char buffActivePow	[lcdBufferLen];
 	char buffApparentPow[lcdBufferLen];
+	char buffReactivePow[lcdBufferLen];
 
 	/*Refresco del LCD:*/
 	CLEAR_LCD_2x16(LCD_2X16);
+
+	/*Calculo de la potencia activa:*/
+	P();
 
 	/*Mostrar potencia activa:*/
 	sprintf(buffActivePow, "P=%.1f W", activePow);
 	PRINT_LCD_2x16(LCD_2X16, 0, 0, buffActivePow);
 
+	/*Calculo de la potencia aparente:*/
+	S();
+
 	/*Mostrar potencia aparente:*/
 	sprintf(buffApparentPow, "S=%.1f VA", apparentPow);
 	PRINT_LCD_2x16(LCD_2X16, 0, 1, buffApparentPow);
 
+	/*Calculo de la potencia reactiva:*/
+	Q();
+
+	/*Mostrar potencia reactiva:*/
+	sprintf(buffReactivePow, "Q=%.1f VAR", reactivePow);
+	PRINT_LCD_2x16(LCD_2X16, 6, 0, buffReactivePow);
+
 	/*Reseteo de las variables de calculo de potencia:*/
-	activePow = 0.0f;
+	activePow 	= 0.0f;
 	apparentPow = 0.0f;
+	reactivePow = 0.0f;
 }
 
 /*Tomar muestras de tension y corriente mediante los ADC:*/
