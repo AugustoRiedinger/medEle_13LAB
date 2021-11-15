@@ -154,24 +154,34 @@ void S(void)
 {
 	/*Variable para el conteo de ciclos:*/
 	uint32_t i = 0;
+	uint32_t k = 0;
 
 	/*Modulo de la tension:*/
 	float	 voltMod = 0.0f;
+	float 	 sumVoltElem = 0.0f;
 
 	/*Modulo de la corriente:*/
 	float 	 currMod = 0.0f;
+	float 	 sumCurrElem = 0.0f;
 
-	/*TODO: BUSCAR COMO CALCULAR EL MODULO DE UN ARREGLO.*/
-
-	/*S es el producto de los modulos de tension y corriente:*/
+	/*Suma de los cuadrados de cada elemento de tension y corriente:*/
 	for (i = 0; i < maxSampling; i++)
 	{
-		/*Calculo del modulo de la tension:*/
-		voltMod = voltMod + sqrt(voltValueAna[i]*voltValueAna[i]);
-		/*Calculo del modulo de la corriente:*/
-		currMod = currMod + sqrt(voltValueAna[i]*currValueAna[i]);
-		/*Calculo potencia aparente:*/
-		apparentPow = apparentPow + voltMod*currMod;
+		sumVoltElem = sumVoltElem + voltValueAna[i]*voltValueAna[i];
+		sumCurrElem = sumCurrElem + currValueAna[i]*currValueAna[i];
+	}
+
+	/*Se calculan los modulos y la potencia reactiva:*/
+	for(k = 0; k < maxSampling; k++)
+	{
+		/*Modulo de la tension:*/
+		voltMod = sqrt(sumVoltElem);
+
+		/*Modulo de la corriente:*/
+		currMod = sqrt(sumCurrElem);
+
+		/*S es el producto de los modulos de tension y corriente:*/
+		apparentPow = voltMod*currMod;
 	}
 }
 
