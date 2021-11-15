@@ -20,6 +20,7 @@ LIBRERIAS:
 #include "stdio.h"
 #include "stm32f4xx_tim.h"
 #include "misc.h"
+#include "math.h"
 #include "stm32f4xx_syscfg.h"
 #include "stm32f4xx_dma.h"
 
