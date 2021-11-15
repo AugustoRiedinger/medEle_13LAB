@@ -1,16 +1,15 @@
 /********************************************************************************
   * @file    main.c
-  * @author  A. Riedinger & G. Stang.
+  * @author  M. Ibacache, A. Riedinger & G. Stang.
   * @version 0.1
-  * @date    09-11-21.
-  * @brief   Generacion de un filtro pasa altos digital FIR con n = 10 y
-  	  	  	 fc = 2kHz segun una ventana tipo Hamming.
+  * @date    10-11-21.
+  * @brief 	 Medidor de potencia real, instantanea y aparente con DMA.
 
   * SALIDAS:
   	  *	LCD  Conexion Estandar TPs
 
   * ENTRADAS:
-  	  * TEC-MAT
+  	  * UserButton  - PC13
 ********************************************************************************/
 
 #include "functions.h"
@@ -73,6 +72,7 @@ void LCD(void)
 	char buffActivePow	[lcdBufferLen];
 	char buffApparentPow[lcdBufferLen];
 	char buffReactivePow[lcdBufferLen];
+	char buffCosTheta	[lcdBufferLen];
 
 	/*Refresco del LCD:*/
 	CLEAR_LCD_2x16(LCD_2X16);
@@ -98,10 +98,18 @@ void LCD(void)
 	sprintf(buffReactivePow, "Q=%.1f VAR", reactivePow);
 	PRINT_LCD_2x16(LCD_2X16, 6, 0, buffReactivePow);
 
+	/*Calculo del cos(theta):*/
+	COS_THETA();
+
+	/*Mostrar cos(theta):*/
+	sprintf(buffCosTheta, "T=%.1f VAR", cosTheta);
+	PRINT_LCD_2x16(LCD_2X16, 6, 1, buffCosTheta);
+
 	/*Reseteo de las variables de calculo de potencia:*/
 	activePow 	= 0.0f;
 	apparentPow = 0.0f;
 	reactivePow = 0.0f;
+	cosTheta	= 0.0f;
 }
 
 /*Tomar muestras de tension y corriente mediante los ADC:*/
@@ -171,5 +179,13 @@ void S(void)
 void Q(void)
 {
 	/*Q se calcula a partir del triangulo de potencias:*/
+	/*S^2 = P^2 + Q^2*/
 	reactivePow = apparentPow*apparentPow - activePow*activePow;
+}
+
+/*Calculo del coseno de theta:*/
+void COS_THETA(void)
+{
+	/*P = S * cos(theta):*/
+	cosTheta = activePow / apparentPow;
 }

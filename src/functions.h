@@ -148,6 +148,8 @@ void S(void);
 /*Calculo de la potencia reactiva:*/
 void Q(void);
 
+/*Calculo del coseno de theta:*/
+void COS_THETA(void);
 /*------------------------------------------------------------------------------
 DECLARACION VARIABLES GLOBALES DE MAIN.C:
 ------------------------------------------------------------------------------*/
@@ -167,13 +169,16 @@ float 	 voltValueAna[maxSampling];
 float 	 currValueAna[maxSampling];
 
 /*Variable para almacenar la potencia activa:*/
-float 	 activePow = 0.0f;
+float 	 activePow 	= 0.0f;
 
 /*Variable para almacenar la potencia aparente:*/
 float 	apparentPow = 0.0f;
 
 /*Variable para almacenar la potencia reactiva:*/
 float 	reactivePow = 0.0f;
+
+/*Variable para almacenar el cos(theta):*/
+float	cosTheta 	= 0.0f;
 
 /*------------------------------------------------------------------------------
 DECLARACION FUNCIONES DE FUNCTIONS.C :
