@@ -156,10 +156,18 @@ void LCD(void)
 
 	/*Calculo de la potencia activa:*/
 	P();
+
+
+
+	/*Reseteo de las variables de calculo de potencia:*/
+	activePow = 0.0f;
 }
 
 /*Calculo de la potencia activa:*/
 void P(void)
 {
+	uint32_t i = 0;
 
+	for (i = 0; i < maxSampling; i++)
+		activePow = (float) activePow + voltValueAna[i]*currValueAna[i];
 }
