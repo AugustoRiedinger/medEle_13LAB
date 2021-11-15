@@ -157,3 +157,10 @@ void S(void)
 		apparentPow = apparentPow + voltMod*currMod;
 	}
 }
+
+/*Calculo de la potencia reactiva:*/
+void Q(void)
+{
+	/*Q se calcula a partir del triangulo de potencias:*/
+	reactivePow = apparentPow*apparentPow - activePow*activePow;
+}

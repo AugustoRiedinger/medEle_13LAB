@@ -145,6 +145,9 @@ void P(void);
 /*Calcular potencia aparente:*/
 void S(void);
 
+/*Calculo de la potencia reactiva:*/
+void Q(void);
+
 /*------------------------------------------------------------------------------
 DECLARACION VARIABLES GLOBALES DE MAIN.C:
 ------------------------------------------------------------------------------*/
@@ -168,6 +171,9 @@ float 	 activePow = 0.0f;
 
 /*Variable para almacenar la potencia aparente:*/
 float 	apparentPow = 0.0f;
+
+/*Variable para almacenar la potencia reactiva:*/
+float 	reactivePow = 0.0f;
 
 /*------------------------------------------------------------------------------
 DECLARACION FUNCIONES DE FUNCTIONS.C :
