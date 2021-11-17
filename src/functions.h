@@ -93,12 +93,12 @@ DEFINICION PINES DEL HARDWARE:
 /*Pines del LCD:*/
 LCD_2X16_t LCD_2X16[] = {
 			// Name  , PORT ,   PIN      ,         CLOCK       ,   Init
-			{ TLCD_RS, GPIOC, GPIO_Pin_10, RCC_AHB1Periph_GPIOC, Bit_RESET },
-			{ TLCD_E,  GPIOC, GPIO_Pin_11, RCC_AHB1Periph_GPIOC, Bit_RESET },
-			{ TLCD_D4, GPIOC, GPIO_Pin_12, RCC_AHB1Periph_GPIOC, Bit_RESET },
-			{ TLCD_D5, GPIOD, GPIO_Pin_2,  RCC_AHB1Periph_GPIOD, Bit_RESET },
-			{ TLCD_D6, GPIOF, GPIO_Pin_6,  RCC_AHB1Periph_GPIOF, Bit_RESET },
-			{ TLCD_D7, GPIOF, GPIO_Pin_7,  RCC_AHB1Periph_GPIOF, Bit_RESET }, };
+			{ TLCD_RS, GPIOE, GPIO_Pin_2,  RCC_AHB1Periph_GPIOE, Bit_RESET },
+			{ TLCD_E,  GPIOE, GPIO_Pin_4,  RCC_AHB1Periph_GPIOE, Bit_RESET },
+			{ TLCD_D4, GPIOE, GPIO_Pin_5,  RCC_AHB1Periph_GPIOE, Bit_RESET },
+			{ TLCD_D5, GPIOE, GPIO_Pin_6,  RCC_AHB1Periph_GPIOE, Bit_RESET },
+			{ TLCD_D6, GPIOE, GPIO_Pin_3,  RCC_AHB1Periph_GPIOE, Bit_RESET },
+			{ TLCD_D7, GPIOF, GPIO_Pin_8,  RCC_AHB1Periph_GPIOF, Bit_RESET }, };
 
 /*------------------------------------------------------------------------------
 DEFINICION DE VALORES PARA MAIN.C:
