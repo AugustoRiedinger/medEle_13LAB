@@ -102,7 +102,7 @@ void LCD(void)
 	COS_THETA();
 
 	/*Mostrar cos(theta):*/
-	sprintf(buffCosTheta, "T=%.1f VAR", cosTheta);
+	sprintf(buffCosTheta, "fdp=%.1f", cosTheta);
 	PRINT_LCD_2x16(LCD_2X16, 6, 1, buffCosTheta);
 
 	/*Reseteo de las variables de calculo de potencia:*/
@@ -118,8 +118,10 @@ void ADC_PROCESSING(void)
 	/*Almacenar dato de tension digital instantanea:*/
 	voltValueDig[instant] = READ_ADC1();
 
-	/*Conversion y almacenamiento de dato de tension analogico:*/
+	/*Conversion y almacenamiento de dato de tension analogico de 0 a 310 Vpp:*/
 	voltValueAna[instant] = (float) voltValueDig[instant] * maxVoltValue / maxDigValue;
+	/*Conversion del dato analogico a de -155 a 155 Vpp:*/
+	voltValueAna[instant] = voltValueAna[instant] - 155;
 
 	/*Almacenar dato de corriente digital instantanea:*/
 	currValueDig[instant] = READ_ADC2();
@@ -146,7 +148,7 @@ void P(void)
 
 	/*P es la sumatoria del producto de valores instantaneos de tension y corriente:*/
 	for (i = 0; i < maxSampling; i++)
-		activePow = (float) activePow + voltValueAna[i]*currValueAna[i];
+		activePow += (float) voltValueAna[i]*currValueAna[i];
 }
 
 /*Calculo de la potencia aparente:*/
@@ -167,8 +169,8 @@ void S(void)
 	/*Suma de los cuadrados de cada elemento de tension y corriente:*/
 	for (i = 0; i < maxSampling; i++)
 	{
-		sumVoltElem = sumVoltElem + voltValueAna[i]*voltValueAna[i];
-		sumCurrElem = sumCurrElem + currValueAna[i]*currValueAna[i];
+		sumVoltElem += voltValueAna[i]*voltValueAna[i];
+		sumCurrElem += currValueAna[i]*currValueAna[i];
 	}
 
 	/*Se calculan los modulos y la potencia reactiva:*/
