@@ -124,7 +124,8 @@ void ADC_PROCESSING(void)
 	voltValueAna[instant] = voltValueAna[instant] - 155;
 
 	/*Almacenar dato de corriente digital instantanea:*/
-	currValueDig[instant] = READ_ADC2();
+	//currValueDig[instant] = READ_ADC2();
+	currValueDig[instant] = 4095 / 2;
 
 	/*TODO: BUSCAR EL VALOR MAXIMO DE CORRIENTE PARA LA CONVERSION.*/
 
