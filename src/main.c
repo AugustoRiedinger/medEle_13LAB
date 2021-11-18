@@ -44,6 +44,9 @@ DEFINICION DE VALORES PARA MAIN.C:
 /*Frecuencia de muestreo para configurar el TIM3:*/
 #define FS  4000 //[Hz]
 
+/*Frecuencia de interrupcion del systick:*/
+#define systickIntTime 1 / (4*FS) //[seg]
+
 /*Frecuencia base de la red:*/
 #define baseFreq 50 //[Hz]
 
@@ -63,10 +66,10 @@ DEFINICION DE VALORES PARA MAIN.C:
 #define maxSampling 5 * FS / baseFreq
 
 /*Ingreso al clear del display cada 200mseg:*/
-#define ticksLCD	5000
+#define ticksLCD	200
 
 /*------------------------------------------------------------------------------
-DECLARACION FUNCIONES GLOBALES DE MAIN.C:
+DECLARACION FUNCIONES DE MAIN.C:
 ------------------------------------------------------------------------------*/
 /*Procesamiento de datos del LCD:*/
 void ADC_PROCESSING(void);
@@ -89,32 +92,34 @@ void COS_THETA(void);
 /*------------------------------------------------------------------------------
 DECLARACION VARIABLES GLOBALES DE MAIN.C:
 ------------------------------------------------------------------------------*/
-/*Variables de manejo del TS:*/
-uint32_t adc = 0;
+/*Control del refresco del LCD:*/
 uint32_t lcd = 0;
+
+/*Registro para guardar los valores digitales del ADC:*/
+uint32_t adcDigValues[maxSampling];
 
 /*Variable para controlar el almacenamiento de datos de los ADC:*/
 uint32_t instant = 0;
 
 /*Variables de almacenamiento de datos del ADC en forma digital:*/
-uint32_t voltValueDig[maxSampling];
-uint32_t currValueDig[maxSampling];
+uint32_t voltValueDig[maxSampling/2];
+uint32_t currValueDig[maxSampling/2];
 
 /*Variables de almacenamiento de datos del ADC en forma analogica:*/
-float 	 voltValueAna[maxSampling];
-float 	 currValueAna[maxSampling];
+float 	 voltValueAna[maxSampling/2];
+float 	 currValueAna[maxSampling/2];
 
 /*Variable para almacenar la potencia activa:*/
 float 	 activePow 	= 0.0f;
 
 /*Variable para almacenar la potencia aparente:*/
-float 	apparentPow = 0.0f;
+float 	 apparentPow = 0.0f;
 
 /*Variable para almacenar la potencia reactiva:*/
-float 	reactivePow = 0.0f;
+float 	 reactivePow = 0.0f;
 
 /*Variable para almacenar el cos(theta):*/
-float	cosTheta 	= 0.0f;
+float	 cosTheta 	= 0.0f;
 
 int main(void)
 {
@@ -127,7 +132,7 @@ CONFIGURACION DEL MICRO:
 	INIT_LCD_2x16(LCD_2X16);
 
 	/*Inicializacion del ADC:*/
-	INIT_ADC1DMA(maxSampling);
+	INIT_ADC1DMA(adcDigValues, maxSampling);
 
 	/*Inicialización del TIM3:*/
 	INIT_TIM3(timeBase, FS);
@@ -145,20 +150,26 @@ BUCLE PRINCIPAL:
 /*------------------------------------------------------------------------------
 INTERRUPCIONES:
 ------------------------------------------------------------------------------*/
-/*Interrupcion al vencimiento de cuenta de TIM3 cada 1/FS:*/
-void TIM3_IRQHandler(void) {
-	if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET) {
-
-		/*Se aumenta la variable para controlar el refresco del LCD:*/
-		lcd++;
-
-		/*Se toma una muestra en el ADC:*/
-		ADC_PROCESSING();
-
-		/*Actualizar flag TIM3:*/
-        TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
-	}
+//Interrupcion por tiempo - Systick cada 1mseg:
+void SysTick_Handler()
+{
+	lcd++;
 }
+
+///*Interrupcion al vencimiento de cuenta de TIM3 cada 1/FS:*/
+//void TIM3_IRQHandler(void) {
+//	if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET) {
+//
+//		/*Se aumenta la variable para controlar el refresco del LCD:*/
+//		lcd++;
+//
+//		/*Se toma una muestra en el ADC:*/
+//		ADC_PROCESSING();
+//
+//		/*Actualizar flag TIM3:*/
+//        TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+//	}
+//}
 
 /*------------------------------------------------------------------------------
 TAREAS:

@@ -85,11 +85,8 @@ typedef struct {
 /*------------------------------------------------------------------------------
 DECLARACION FUNCIONES DE FUNCTIONS.C :
 ------------------------------------------------------------------------------*/
-/*Registro para guardar los valores digitales del ADC:*/
-uint32_t adcDigValues[5*80];
-
 void 	INIT_DO(GPIO_TypeDef* Port, uint32_t Pin);
-void 	INIT_ADC1DMA(uint32_t bufferSize);
+void 	INIT_ADC1DMA(uint32_t adcArray[], uint32_t bufferSize);
 void 	ADC_INIT(void);
 void 	INIT_TIM3(uint32_t TimeBase, uint32_t Freq);
 void	INIT_LCD_2x16(LCD_2X16_t*);

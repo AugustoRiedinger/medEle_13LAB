@@ -57,6 +57,25 @@ void INIT_DO(GPIO_TypeDef* Port, uint32_t Pin)
 }
 
 /*****************************************************************************
+INIT_SYSTICK
+
+	* @author	A. Riedinger.
+	* @brief	Inicializa la Interrupcion por tiempo definido por el usuario.
+	* @returns	void
+	* @param
+		- seg	Tiempo en segundos a los que se realizara la interrupcion.
+
+	* @ej
+		- INIT_SYSTICK(1/1000); //Interrupcion cada 1 mseg.
+******************************************************************************/
+void INIT_SYSTICK(float div)
+{
+	SysTick_Config(SystemCoreClock * div);
+	RCC_ClocksTypeDef Clocks_Values;
+	RCC_GetClocksFreq(&Clocks_Values);
+}
+
+/*****************************************************************************
 INIT_ADC
 
 	* @author	Catedra UTN-BHI TDII / A. Riedinger.
@@ -68,7 +87,7 @@ INIT_ADC
 	* @ej
 		- INIT_ADC(GPIOX, GPIO_Pin_X);
 ******************************************************************************/
-void INIT_ADC1DMA(uint32_t bufferSize)
+void INIT_ADC1DMA(uint32_t* adcArray, uint32_t bufferSize)
 {
 /*Habilitacion del clock de los perficos del DMA y el ADC1::*/
 RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
@@ -81,7 +100,7 @@ DMA_InitStructure.DMA_Channel = DMA_Channel_0;
 /*Registro donde se guardan los valores convertidos:*/
 DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&ADC1->DR;
 /*Direccion del arreglo donde se guardan los valores leidos:*/
-DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&adcDigValues[0];
+DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t) adcArray;
 /*Establecer que el DMA transmitira a memoria:*/
 DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
 /*Establecer la cantidad de valores a convertir:*/
