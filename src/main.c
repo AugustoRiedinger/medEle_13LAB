@@ -42,7 +42,7 @@ DEFINICION DE VALORES PARA MAIN.C:
 #define timeBase 200e3 //[mseg]
 
 /*Frecuencia de muestreo para configurar el TIM3:*/
-#define FS  5000 //[Hz]
+#define FS  4000 //[Hz]
 
 /*Frecuencia base de la red:*/
 #define baseFreq 50 //[Hz]
@@ -60,7 +60,7 @@ DEFINICION DE VALORES PARA MAIN.C:
 #define maxDigValue 4095
 
 /*Maximo almacenamiento en un ciclo:*/
-#define maxSampling FS / baseFreq
+#define maxSampling 5 * FS / baseFreq
 
 /*Ingreso al clear del display cada 200mseg:*/
 #define ticksLCD	5000
@@ -127,7 +127,7 @@ CONFIGURACION DEL MICRO:
 	INIT_LCD_2x16(LCD_2X16);
 
 	/*Inicializacion del ADC:*/
-	INIT_ADC();
+	INIT_ADC1DMA(maxSampling);
 
 	/*Inicialización del TIM3:*/
 	INIT_TIM3();

@@ -68,98 +68,83 @@ INIT_ADC
 	* @ej
 		- INIT_ADC(GPIOX, GPIO_Pin_X);
 ******************************************************************************/
-/*Inicializacion de dos ADC:*/
-void INIT_ADC(void) {
+void INIT_ADC1DMA(uint32_t bufferSize)
+{
+/*Habilitacion del clock de los perficos del DMA y el ADC1::*/
+RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
+RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
 
-	GPIO_InitTypeDef GPIO_InitStructure;
-	ADC_InitTypeDef ADC_InitStructure;
-	ADC_CommonInitTypeDef ADC_CommonInitStructure;
+/*Inicio configuracion DMA2:*/
+DMA_DeInit(DMA2_Stream0);
+/*Se elige DMA canal 0 para trabajar con ADC1:*/
+DMA_InitStructure.DMA_Channel = DMA_Channel_0;
+/*Registro donde se guardan los valores convertidos:*/
+DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&ADC1->DR;
+/*Direccion del arreglo donde se guardan los valores leidos:*/
+DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&adcDigValues[0];
+/*Establecer que el DMA transmitira a memoria:*/
+DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
+/*Establecer la cantidad de valores a convertir:*/
+DMA_InitStructure.DMA_BufferSize = bufferSize;
+/*Se deshabilita el incremento de memoria por periferico:*/
+DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+/*Se habilita el incremento de memoria para crear un arreglo dinamico:*/
+DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+/*Ancho de bit del dato:*/
+DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
+/*Ancho de cada elemento del arreglo:*/
+DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
+/*Modo circuilar, cuando llega al final del arreglo vuelve a arrancar desde el primer valor:*/
+DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+/*Maxima prioridad al DMA:*/
+DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;
+DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_HalfFull;
+DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
+DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
+DMA_Init(DMA2_Stream0, &DMA_InitStructure);
 
-	/* Puerto C -------------------------------------------------------------*/
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
+/*Habilitacion del DMA:*/
+DMA_Cmd(DMA2_Stream0, ENABLE);
 
-	/* PC1 para entrada analógica */
-	GPIO_StructInit(&GPIO_InitStructure);
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_3;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_Init(GPIOC, &GPIO_InitStructure);
+/*Inicio configuracion del ADC1:*/
+ADC_CommonInitStructure.ADC_Mode = ADC_Mode_Independent;
+ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div2;
+/*Se habilita el acceso del DMA:*/
+ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_1;
+ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles;
 
-	/* Activar ADC1 ----------------------------------------------------------*/
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
-	/* Activar ADC2 ----------------------------------------------------------*/
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC2, ENABLE);
+/*Cargar la configuracion:*/
+ADC_CommonInit(&ADC_CommonInitStructure);
 
-	/* ADC Common Init -------------------------------------------------------*/
-	ADC_CommonStructInit(&ADC_CommonInitStructure);
-	ADC_CommonInitStructure.ADC_Mode = ADC_Mode_Independent;
-	ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div4; // max 36 MHz segun datasheet
-	ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled;
-	ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles;
-	ADC_CommonInit(&ADC_CommonInitStructure);
+/*Resolucion del ADC en 12 bits:*/
+ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;
+/*Habilita la conversion de varios canales simultaneamente:*/
+ADC_InitStructure.ADC_ScanConvMode = ENABLE;
+/*Se deshabilita el modo continuo, ya que el ADC se va a activar por el TIM3:*/
+ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;
+/*Disparo por flanco ascendente:*/
+ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_Rising;
+/*Define el TMRGO del TIM3 como disparo del ADC:*/
+ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T3_TRGO;
+ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
+/*Cantidad de datos que se van a convertir por disparo del ADC (tension y corriente):*/
+ADC_InitStructure.ADC_NbrOfConversion = 2;
 
-	/* ADC Init ---------------------------------------------------------------*/
-	ADC_StructInit(&ADC_InitStructure);
-	ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;
-	ADC_InitStructure.ADC_ScanConvMode = DISABLE;
-	ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;
-	ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None;
-	ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
-	ADC_InitStructure.ADC_NbrOfConversion = 1;
-	ADC_Init(ADC1, &ADC_InitStructure);
-	ADC_Init(ADC2, &ADC_InitStructure);
+/*Inicializacion del ADC con los parametros establecidos:*/
+ADC_Init(ADC1, &ADC_InitStructure);
 
-	/* Establecer la configuración de conversión ------------------------------*/
-	ADC_InjectedSequencerLengthConfig(ADC1, 1);
-	ADC_SetInjectedOffset(ADC1, ADC_InjectedChannel_1, 0);
-	ADC_InjectedChannelConfig(ADC1, ADC_Channel_10, 1,
-			ADC_SampleTime_480Cycles);
+/*Configuracion de los canales del ADC:*/
+/*Canal 10 ADC1 (PC0) con orden 1 para conversion de tension:*/
+ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_480Cycles);
+/*Canal 13 ADC1 (PC13) con orden 2 para conversion de corriente:*/
+ADC_RegularChannelConfig(ADC1, ADC_Channel_13, 2, ADC_SampleTime_480Cycles);
+/*Habilitacion del pedido del DMA en el ADC1:*/
+ADC_DMARequestAfterLastTransferCmd(ADC1, ENABLE);
+ADC_DMACmd(ADC1, ENABLE);
 
-	/* Establecer la configuración de conversión ------------------------------*/
-	ADC_InjectedSequencerLengthConfig(ADC2, 1);
-	ADC_SetInjectedOffset(ADC2, ADC_InjectedChannel_1, 0);
-	ADC_InjectedChannelConfig(ADC2, ADC_Channel_13, 1,
-			ADC_SampleTime_480Cycles);
-
-	/* Poner en marcha ADC ----------------------------------------------------*/
-	ADC_Cmd(ADC1, ENABLE);
-
-	/* Poner en marcha ADC ----------------------------------------------------*/
-	ADC_Cmd(ADC2, ENABLE);
-}
-
-/*Lectura del ADC1:*/
-int32_t READ_ADC1(void) {
-
-	uint32_t valor_adc;
-
-	ADC_ClearFlag(ADC1, ADC_FLAG_JEOC);      // borrar flag de fin conversion
-
-	ADC_SoftwareStartInjectedConv(ADC1);    // iniciar conversion
-
-	while (ADC_GetFlagStatus(ADC1, ADC_FLAG_JEOC) == RESET)
-		; // Espera fin de conversion
-
-	valor_adc = ADC_GetInjectedConversionValue(ADC1, ADC_InjectedChannel_1); // obtiene Valor A-D
-
-	return valor_adc;
-}
-
-/*Lectura del ADC2:*/
-int32_t READ_ADC2(void) {
-
-	uint32_t valor_adc;
-
-	ADC_ClearFlag(ADC2, ADC_FLAG_JEOC);      // borrar flag de fin conversion
-
-	ADC_SoftwareStartInjectedConv(ADC2);    // iniciar conversion
-
-	while (ADC_GetFlagStatus(ADC2, ADC_FLAG_JEOC) == RESET)
-		; // Espera fin de conversion
-
-	valor_adc = ADC_GetInjectedConversionValue(ADC2, ADC_InjectedChannel_1); // obtiene Valor A-D
-
-	return valor_adc;
+/*Habilitacion del ADC1:*/
+ADC_Cmd(ADC1, ENABLE);
 }
 
 /*****************************************************************************

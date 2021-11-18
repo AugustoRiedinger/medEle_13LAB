@@ -13,3 +13,4 @@ Debug/src/mi_libreria.su
 *.o
 src/stm32f4xx_it.h
 stm32f4_flash.ld
+*.elf

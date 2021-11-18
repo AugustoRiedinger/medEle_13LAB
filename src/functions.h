@@ -20,6 +20,7 @@ LIBRERIAS:
 #include "stdio.h"
 #include "stm32f4xx_tim.h"
 #include "math.h"
+#include "misc.h"
 #include "stm32f4xx_syscfg.h"
 #include "stm32f4xx_dma.h"
 
@@ -29,7 +30,9 @@ DECLARACION DE ESTRUCTURAS:
 TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
 TIM_OCInitTypeDef  		TIM_OCInitStructure;
 EXTI_InitTypeDef   		EXTI_InitStructure;
-DAC_InitTypeDef 		DAC_InitStructure;
+ADC_InitTypeDef 		ADC_InitStructure;
+ADC_CommonInitTypeDef 	ADC_CommonInitStructure;
+DMA_InitTypeDef 		DMA_InitStructure;
 
 /*------------------------------------------------------------------------------
 DEFINICION CONSTANTES LCD:
@@ -81,11 +84,12 @@ typedef struct {
 /*------------------------------------------------------------------------------
 DECLARACION FUNCIONES DE FUNCTIONS.C :
 ------------------------------------------------------------------------------*/
+/*Registro para guardar los valores digitales del ADC:*/
+uint32_t adcDigValues[5*80];
+
 void 	INIT_DO(GPIO_TypeDef* Port, uint32_t Pin);
-void 	INIT_ADC(void);
+void 	INIT_ADC1DMA(uint32_t bufferSize);
 void 	ADC_INIT(void);
-int32_t READ_ADC1(void);
-int32_t READ_ADC2(void);
 void 	INIT_TIM3();
 void 	SET_TIM3(uint32_t TimeBase, uint32_t Freq);
 void	INIT_LCD_2x16(LCD_2X16_t*);
