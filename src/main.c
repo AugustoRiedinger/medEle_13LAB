@@ -10,6 +10,8 @@
 
   * ENTRADAS:
   	  * UserButton  - PC13
+  	  * Tension AC  - PC0
+  	  * Hall 		- PC3
 ********************************************************************************/
 
 #include "functions.h"
@@ -45,7 +47,7 @@ DEFINICION DE VALORES PARA MAIN.C:
 #define FS  4000 //[Hz]
 
 /*Frecuencia de interrupcion del systick:*/
-#define systickIntTime 1 / (4*FS) //[seg]
+#define systickIntTime 1 / (6*FS) //[seg]
 
 /*Frecuencia base de la red:*/
 #define baseFreq 50 //[Hz]
@@ -56,17 +58,24 @@ DEFINICION DE VALORES PARA MAIN.C:
 /*Voltaje maximo analogico:*/
 #define maxVoltValue 622 //[Vpp]
 
-/*Corriente maxima analogica:*/
-#define maxCurrValue 180 //[mA]
+/*Maximo voltaje del sensor efecto hall:*/
+#define maxHallValue 3 //[V]
+
+/*Resolucion del sensor de efecto hall:*/
+#define hallRes 180e-3 //[mv/A]
 
 /*Valor maximo digital al voltaje o corriente maximo:*/
 #define maxDigValue 4095
 
 /*Maximo almacenamiento en un ciclo:*/
-#define maxSampling 5 * FS / baseFreq
+#define maxSampling 6 * FS / baseFreq
 
 /*Ingreso al clear del display cada 200mseg:*/
-#define ticksLCD	200
+#define ticksLCD	500
+
+/*Ingreso al procesamiento de datos del ADC cada 6 ciclos:*/
+#define ticksADC 	26
+
 
 /*------------------------------------------------------------------------------
 DECLARACION FUNCIONES DE MAIN.C:
@@ -95,6 +104,9 @@ DECLARACION VARIABLES GLOBALES DE MAIN.C:
 /*Control del refresco del LCD:*/
 uint32_t lcd = 0;
 
+/*Control de procesamiento de datos del LCD:*/
+uint32_t adcProcessing = 0;
+
 /*Registro para guardar los valores digitales del ADC:*/
 uint32_t adcDigValues[maxSampling];
 
@@ -102,12 +114,12 @@ uint32_t adcDigValues[maxSampling];
 uint32_t instant = 0;
 
 /*Variables de almacenamiento de datos del ADC en forma digital:*/
-uint32_t voltValueDig[maxSampling/2];
-uint32_t currValueDig[maxSampling/2];
+uint32_t voltValuesDig[maxSampling/2];
+uint32_t currValuesDig[maxSampling/2];
 
 /*Variables de almacenamiento de datos del ADC en forma analogica:*/
-float 	 voltValueAna[maxSampling/2];
-float 	 currValueAna[maxSampling/2];
+float 	 voltValuesAna[maxSampling/2];
+float 	 currValuesAna[maxSampling/2];
 
 /*Variable para almacenar la potencia activa:*/
 float 	 activePow 	= 0.0f;
@@ -142,8 +154,10 @@ BUCLE PRINCIPAL:
 ------------------------------------------------------------------------------*/
 	while(1)
 	{
-		/*Refresco del LCD cada 200mseg:*/
-		if (lcd == ticksLCD)
+		/*Despachador de tareas:*/
+		if (adcProcessing == ticksADC)
+			ADC_PROCESSING();
+		else if (lcd == ticksLCD)
 			LCD();
 	}
 }
@@ -153,6 +167,7 @@ INTERRUPCIONES:
 //Interrupcion por tiempo - Systick cada 1mseg:
 void SysTick_Handler()
 {
+	adcProcessing++;
 	lcd++;
 }
 
@@ -227,29 +242,22 @@ void LCD(void)
 /*Tomar muestras de tension y corriente mediante los ADC:*/
 void ADC_PROCESSING(void)
 {
-	/*Almacenar dato de tension digital instantanea:*/
-	voltValueDig[instant] = READ_ADC1();
+	/*Control de ciclos:*/
+	uint32_t i = 0;
 
-	/*Conversion y almacenamiento de dato de tension analogico de 0 a 310 Vpp:*/
-	voltValueAna[instant] = (float) voltValueDig[instant] * maxVoltValue / maxDigValue - 311;
+	/*Pasaje de datos del arreglo general a los especificos:*/
+	for (i = 0; i <= maxSampling ; i++)
+	{
+		/*Los datos de tension seran los pares:*/
+		voltValuesDig[i] = adcDigValues[2*i];
+		/*Los datos de corriente seran los impares:*/
+		currValuesDig[i] = adcDigValues[(2*i)+1];
 
-	/*Almacenar dato de corriente digital instantanea:*/
-	//currValueDig[instant] = READ_ADC2();
-	currValueDig[instant] = 4095 / 2;
-
-	/*TODO: BUSCAR EL VALOR MAXIMO DE CORRIENTE PARA LA CONVERSION.*/
-
-	/*Conversion y almacenamiento de dato de corriente analogica:*/
-//	currValueAna[instant] = (float) currValueDig[instant] * maxCurrValue / maxDigValue;
-	currValueAna[instant] = (float) 277.5e-3;
-
-	/*Control de la variable para almacenar datos instantaneos:*/
-	/*Si esta en el maximo instante de muestreo se resetea:*/
-	if (instant == maxSampling)
-		instant = 0;
-	/*Sino, se sigue aumentando:*/
-	else
-		instant++;
+		/*Conversion y almacenamiento de dato de tension analogico de 0 a 310 Vpp:*/
+		voltValuesAna[i] = (float)(voltValuesDig[i]*maxVoltValue/maxDigValue-maxVoltValue/2);
+		/*Conversion y almacenamiento de corriente analogica:*/
+		currValuesAna[i] = (float)((currValuesDig[i]*maxHallValue/maxDigValue)*hallRes);
+	}
 }
 
 /*Calculo de la potencia activa:*/
@@ -260,7 +268,7 @@ void P(void)
 
 	/*P es la sumatoria del producto de valores instantaneos de tension y corriente:*/
 	for (i = 0; i < maxSampling; i++)
-		activePow += (float) voltValueAna[i]*currValueAna[i];
+		activePow += (float) voltValuesAna[i]*currValuesAna[i];
 }
 
 /*Calculo de la potencia aparente:*/
@@ -281,8 +289,8 @@ void S(void)
 	/*Suma de los cuadrados de cada elemento de tension y corriente:*/
 	for (i = 0; i < maxSampling; i++)
 	{
-		sumVoltElem += voltValueAna[i]*voltValueAna[i];
-		sumCurrElem += currValueAna[i]*currValueAna[i];
+		sumVoltElem += voltValuesAna[i]*voltValuesAna[i];
+		sumCurrElem += currValuesAna[i]*currValuesAna[i];
 	}
 
 	/*Se calculan los modulos y la potencia reactiva:*/
