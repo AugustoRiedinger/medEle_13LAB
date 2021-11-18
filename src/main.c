@@ -130,8 +130,7 @@ CONFIGURACION DEL MICRO:
 	INIT_ADC1DMA(maxSampling);
 
 	/*Inicialización del TIM3:*/
-	INIT_TIM3();
-	SET_TIM3(timeBase, FS);
+	INIT_TIM3(timeBase, FS);
 
 /*------------------------------------------------------------------------------
 BUCLE PRINCIPAL:

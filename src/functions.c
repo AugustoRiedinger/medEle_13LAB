@@ -155,48 +155,24 @@ INIT_TIM3
 	* @returns	void
 	* @param
 	* @ej
-		- INIT_TIM4();
+		- INIT_TIM3();
 ******************************************************************************/
-void INIT_TIM3()
+void INIT_TIM3(uint32_t TimeBase, uint32_t Freq)
 {
-	NVIC_InitTypeDef NVIC_InitStructure;
-
-	/* TIM3 clock enable */
+	/*Habilitacion del clock del TIM3:*/
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
 
-	/* Enable the TIM3 gloabal Interrupt */
-	NVIC_InitStructure.NVIC_IRQChannel = TIM3_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
-}
+	/*Habilitacion de la interrupcion por vencimiento de cuenta del TIM3:*/
+//	NVIC_InitStructure.NVIC_IRQChannel = TIM3_IRQn;
+//	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+//	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+//	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+//	NVIC_Init(&NVIC_InitStructure);
 
-/*****************************************************************************
-SET_TIM3
-	* @author	A. Riedinger.
-	* @brief	Setea el TIM1 a una determinada frecuencia.
-	* @returns	void
-	* @param
-		- Port		Puerto del timer a inicializar. Ej: GPIOX.
-		- Pin		Pin del LED. Ej: GPIO_Pin_X
+	/*Computacion del valor del preescaler:*/
+	uint16_t PrescalerValue = (uint16_t) ((SystemCoreClock / 2) / TimeBase) - 1;
 
-	* @ej
-		- INIT_TIM4(GPIOX, GPIO_Pin_X); //Inicialización del Pin PXXX como TIMER4.
-******************************************************************************/
-void SET_TIM3(uint32_t TimeBase, uint32_t Freq)
-{
-	uint16_t PrescalerValue = 0;
-
-	//Actualización de los valores del TIM4:
-	SystemCoreClockUpdate();
-	TIM_ITConfig(TIM3, TIM_IT_Update, DISABLE);
-	TIM_Cmd(TIM3, DISABLE);
-
-	/* Compute the prescaler value */
-	PrescalerValue = (uint16_t) ((SystemCoreClock / 2) / TimeBase) - 1;
-
-	/* Time base configuration */
+	/*Configuracion del tiempo de interrupcion:*/
 	TIM_TimeBaseStructure.TIM_Period = TimeBase / Freq - 1;
 	TIM_TimeBaseStructure.TIM_Prescaler = PrescalerValue;
 	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
@@ -204,10 +180,8 @@ void SET_TIM3(uint32_t TimeBase, uint32_t Freq)
 
 	TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
 
-	/* TIM Interrupts enable */
-	TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE);
-
-	/* TIM3 enable counter */
+	/* Selección de TIM3 TRGO */
+	TIM_SelectOutputTrigger(TIM3, TIM_TRGOSource_Update);
 	TIM_Cmd(TIM3, ENABLE);
 }
 
@@ -317,83 +291,6 @@ void PRINT_LCD_2x16(LCD_2X16_t* LCD_2X16, uint8_t x, uint8_t y, char *ptr)
 /*------------------------------------------------------------------------------
  FUNCIONES INTERNAS:
 ------------------------------------------------------------------------------*/
-uint32_t FIND_CLOCK(GPIO_TypeDef* Port)
-{
-	uint32_t Clock;
-
-	if		(Port == GPIOA) Clock = RCC_AHB1Periph_GPIOA;
-	else if (Port == GPIOB) Clock = RCC_AHB1Periph_GPIOB;
-	else if (Port == GPIOC) Clock = RCC_AHB1Periph_GPIOC;
-	else if (Port == GPIOD) Clock = RCC_AHB1Periph_GPIOD;
-	else if (Port == GPIOE) Clock = RCC_AHB1Periph_GPIOE;
-	else if (Port == GPIOF) Clock = RCC_AHB1Periph_GPIOF;
-	else if (Port == GPIOG) Clock = RCC_AHB1Periph_GPIOG;
-	return Clock;
-}
-
-ADC_TypeDef* FIND_ADC_TYPE (GPIO_TypeDef* Port, uint32_t Pin)
-{
-	ADC_TypeDef* ADCX;
-
-	if 		((Port == GPIOA && (Pin == GPIO_Pin_0 || Pin == GPIO_Pin_1   || Pin == GPIO_Pin_2 ||
-								Pin == GPIO_Pin_3 || Pin == GPIO_Pin_4   || Pin == GPIO_Pin_5 ||
-								Pin == GPIO_Pin_6 || Pin == GPIO_Pin_7)) ||
-
-			 (Port == GPIOB && (Pin == GPIO_Pin_0 || Pin == GPIO_Pin_1)) ||
-
-			 (Port == GPIOC && (Pin == GPIO_Pin_0 || Pin == GPIO_Pin_1   || Pin == GPIO_Pin_2 ||
-					  	  	  	Pin == GPIO_Pin_3 || Pin == GPIO_Pin_4   || Pin == GPIO_Pin_5)))
-		ADCX = ADC1;
-
-	else if ((Port == GPIOF && (Pin == GPIO_Pin_3 || Pin == GPIO_Pin_4   || Pin == GPIO_Pin_5 ||
-								Pin == GPIO_Pin_6 || Pin == GPIO_Pin_7   || Pin == GPIO_Pin_8 ||
-								Pin == GPIO_Pin_9 || Pin == GPIO_Pin_10)))
-		ADCX = ADC3;
-
-	else
-		ADCX = NULL;
-
-	return ADCX;
-}
-
-uint32_t FIND_RCC_APB(ADC_TypeDef* ADCX)
-{
-	uint32_t RCC_APB;
-
-	if 		(ADCX == ADC1) RCC_APB = RCC_APB2Periph_ADC1;
-	else if (ADCX == ADC3) RCC_APB = RCC_APB2Periph_ADC3;
-	else 				   RCC_APB = 0;
-
-	return RCC_APB;
-}
-
-uint8_t FIND_CHANNEL(GPIO_TypeDef* Port, uint32_t Pin)
-{
-	uint8_t Channel;
-
-	if 		(Port == GPIOA && Pin == GPIO_Pin_0)  Channel = ADC_Channel_0;  else if (Port == GPIOA && Pin == GPIO_Pin_1)  Channel = ADC_Channel_1;
-	else if (Port == GPIOA && Pin == GPIO_Pin_2)  Channel = ADC_Channel_2;  else if (Port == GPIOA && Pin == GPIO_Pin_3)  Channel = ADC_Channel_3;
-	else if (Port == GPIOA && Pin == GPIO_Pin_4)  Channel = ADC_Channel_4;  else if (Port == GPIOA && Pin == GPIO_Pin_5)  Channel = ADC_Channel_5;
-	else if (Port == GPIOA && Pin == GPIO_Pin_6)  Channel = ADC_Channel_6;  else if (Port == GPIOA && Pin == GPIO_Pin_7)  Channel = ADC_Channel_7;
-	else if (Port == GPIOB && Pin == GPIO_Pin_0)  Channel = ADC_Channel_8;  else if (Port == GPIOB && Pin == GPIO_Pin_1)  Channel = ADC_Channel_9;
-	else if (Port == GPIOC && Pin == GPIO_Pin_0)  Channel = ADC_Channel_10; else if (Port == GPIOC && Pin == GPIO_Pin_1)  Channel = ADC_Channel_11;
-	else if (Port == GPIOC && Pin == GPIO_Pin_2)  Channel = ADC_Channel_12; else if (Port == GPIOC && Pin == GPIO_Pin_3)  Channel = ADC_Channel_13;
-	else if (Port == GPIOC && Pin == GPIO_Pin_4)  Channel = ADC_Channel_14;	else if (Port == GPIOC && Pin == GPIO_Pin_5)  Channel = ADC_Channel_15;
-	else if (Port == GPIOF && Pin == GPIO_Pin_3)  Channel = ADC_Channel_9;	else if (Port == GPIOF && Pin == GPIO_Pin_4)  Channel = ADC_Channel_14;
-	else if (Port == GPIOF && Pin == GPIO_Pin_5)  Channel = ADC_Channel_15;	else if (Port == GPIOF && Pin == GPIO_Pin_6)  Channel = ADC_Channel_4;
-	else if (Port == GPIOF && Pin == GPIO_Pin_7)  Channel = ADC_Channel_5;	else if (Port == GPIOF && Pin == GPIO_Pin_8)  Channel = ADC_Channel_6;
-	else if (Port == GPIOF && Pin == GPIO_Pin_9)  Channel = ADC_Channel_7;	else if (Port == GPIOF && Pin == GPIO_Pin_10) Channel = ADC_Channel_8;
-	else 										  Channel = 0;
-
-	return Channel;
-}
-
-uint32_t FIND_DAC_CHANNEL(GPIO_TypeDef* Port, uint32_t Pin)
-{
-	if(Port == GPIOA && Pin == GPIO_Pin_5) return DAC_Channel_2;
-	else return 0;
-}
-
 //LCD:
 void P_LCD_2x16_InitIO(LCD_2X16_t* LCD_2X16)
 {
