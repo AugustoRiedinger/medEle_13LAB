@@ -40,14 +40,11 @@ LCD_2X16_t LCD_2X16[] = {
 /*------------------------------------------------------------------------------
 DEFINICION DE VALORES PARA MAIN.C:
 ------------------------------------------------------------------------------*/
-/*Base de tiempo para el TIM3:*/
-#define timeBase 200e3 //[mseg]
-
 /*Frecuencia de muestreo para configurar el TIM3:*/
-#define FS  4000 //[Hz]
+#define FS  5000 //[Hz]
 
 /*Frecuencia de interrupcion del systick:*/
-#define systickIntTime 1 / (6*FS) //[seg]
+#define systickIntTime 0.05 //[seg]
 
 /*Frecuencia base de la red:*/
 #define baseFreq 50 //[Hz]
@@ -68,14 +65,10 @@ DEFINICION DE VALORES PARA MAIN.C:
 #define maxDigValue 4095
 
 /*Maximo almacenamiento en un ciclo:*/
-#define maxSampling 6 * FS / baseFreq
+#define maxSampling 10 * FS / baseFreq
 
 /*Ingreso al clear del display cada 200mseg:*/
-#define ticksLCD	500
-
-/*Ingreso al procesamiento de datos del ADC cada 6 ciclos:*/
-#define ticksADC 	26
-
+#define ticksLCD	10
 
 /*------------------------------------------------------------------------------
 DECLARACION FUNCIONES DE MAIN.C:
@@ -101,21 +94,16 @@ void COS_THETA(void);
 /*------------------------------------------------------------------------------
 DECLARACION VARIABLES GLOBALES DE MAIN.C:
 ------------------------------------------------------------------------------*/
-/*Control del refresco del LCD:*/
+/*Control del despachador de tareas:*/
 uint32_t lcd = 0;
-
-/*Control de procesamiento de datos del LCD:*/
-uint32_t adcProcessing = 0;
+uint32_t adc = 0;
 
 /*Registro para guardar los valores digitales del ADC:*/
-uint32_t adcDigValues[maxSampling];
-
-/*Variable para controlar el almacenamiento de datos de los ADC:*/
-uint32_t instant = 0;
+uint16_t adcDigValues[maxSampling];
 
 /*Variables de almacenamiento de datos del ADC en forma digital:*/
-uint32_t voltValuesDig[maxSampling/2];
-uint32_t currValuesDig[maxSampling/2];
+uint16_t voltValuesDig[maxSampling/2];
+uint16_t currValuesDig[maxSampling/2];
 
 /*Variables de almacenamiento de datos del ADC en forma analogica:*/
 float 	 voltValuesAna[maxSampling/2];
@@ -147,44 +135,37 @@ CONFIGURACION DEL MICRO:
 	INIT_ADC1DMA(adcDigValues, maxSampling);
 
 	/*Inicialización del TIM3:*/
-	INIT_TIM3(timeBase, FS);
+	INIT_TIM3(FS);
 
 /*------------------------------------------------------------------------------
 BUCLE PRINCIPAL:
 ------------------------------------------------------------------------------*/
 	while(1)
 	{
-		/*Despachador de tareas:*/
-		if (adcProcessing == ticksADC)
+		if(adc == 1)
 			ADC_PROCESSING();
-		else if (lcd == ticksLCD)
-			LCD();
 	}
 }
+
 /*------------------------------------------------------------------------------
 INTERRUPCIONES:
 ------------------------------------------------------------------------------*/
-//Interrupcion por tiempo - Systick cada 1mseg:
-void SysTick_Handler()
+/*Interrupcion por Transfer Request del DMA:*/
+void DMA2_Stream0_IRQHandler(void)
 {
-	adcProcessing++;
-	lcd++;
-}
+	/* transmission complete interrupt */
+	if (DMA_GetFlagStatus(DMA2_Stream0,DMA_FLAG_TCIF0))
+	{
+		/*Se para el timer:*/
+		TIM_Cmd(TIM3, DISABLE);
 
-///*Interrupcion al vencimiento de cuenta de TIM3 cada 1/FS:*/
-//void TIM3_IRQHandler(void) {
-//	if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET) {
-//
-//		/*Se aumenta la variable para controlar el refresco del LCD:*/
-//		lcd++;
-//
-//		/*Se toma una muestra en el ADC:*/
-//		ADC_PROCESSING();
-//
-//		/*Actualizar flag TIM3:*/
-//        TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
-//	}
-//}
+		/*Se habilita el flag para procesar los datos:*/
+		adc = 1;
+
+		/*Resetear el flag:*/
+		DMA_ClearFlag(DMA2_Stream0,DMA_FLAG_TCIF0);
+	}
+}
 
 /*------------------------------------------------------------------------------
 TAREAS:
@@ -208,21 +189,21 @@ void LCD(void)
 	P();
 
 	/*Mostrar potencia activa:*/
-	sprintf(buffActivePow, "P=%.1f W", activePow);
+	sprintf(buffActivePow, "P=%.1fW", activePow);
 	PRINT_LCD_2x16(LCD_2X16, 0, 0, buffActivePow);
 
 	/*Calculo de la potencia aparente:*/
 	S();
 
 	/*Mostrar potencia aparente:*/
-	sprintf(buffApparentPow, "S=%.1f VA", apparentPow);
+	sprintf(buffApparentPow, "S=%.1fVA", apparentPow);
 	PRINT_LCD_2x16(LCD_2X16, 0, 1, buffApparentPow);
 
 	/*Calculo de la potencia reactiva:*/
 	Q();
 
 	/*Mostrar potencia reactiva:*/
-	sprintf(buffReactivePow, "Q=%.1f VAR", reactivePow);
+	sprintf(buffReactivePow, "Q=%.1fVAR", reactivePow);
 	PRINT_LCD_2x16(LCD_2X16, 8, 0, buffReactivePow);
 
 	/*Calculo del cos(theta):*/
@@ -239,25 +220,34 @@ void LCD(void)
 	cosTheta	= 0.0f;
 }
 
-/*Tomar muestras de tension y corriente mediante los ADC:*/
 void ADC_PROCESSING(void)
 {
+	/*Clarear el flag:*/
+	adc = 0;
+
 	/*Control de ciclos:*/
 	uint32_t i = 0;
 
 	/*Pasaje de datos del arreglo general a los especificos:*/
-	for (i = 0; i <= maxSampling ; i++)
-	{
+	for (i = 0; i <= maxSampling; i++) {
+
+		//adcDigValues[i] = adcDigValues[i]*3/4095;
 		/*Los datos de tension seran los pares:*/
-		voltValuesDig[i] = adcDigValues[2*i];
+		voltValuesDig[i] = adcDigValues[2 * i];
 		/*Los datos de corriente seran los impares:*/
-		currValuesDig[i] = adcDigValues[(2*i)+1];
+		currValuesDig[i] = adcDigValues[(2 * i) + 1];
 
 		/*Conversion y almacenamiento de dato de tension analogico de 0 a 310 Vpp:*/
-		voltValuesAna[i] = (float)(voltValuesDig[i]*maxVoltValue/maxDigValue-maxVoltValue/2);
+		voltValuesAna[i] = (float) (voltValuesDig[i] * maxVoltValue	/ maxDigValue - maxVoltValue / 2);
 		/*Conversion y almacenamiento de corriente analogica:*/
-		currValuesAna[i] = (float)((currValuesDig[i]*maxHallValue/maxDigValue)*hallRes);
+		currValuesAna[i] = (float) ((currValuesDig[i] * maxHallValue / maxDigValue) * hallRes);
 	}
+
+	/*Mostrar los valores en el LCD:*/
+	LCD();
+
+	/*Se vuelve a iniciar el timer:*/
+	TIM_Cmd(TIM3, ENABLE);
 }
 
 /*Calculo de la potencia activa:*/
@@ -269,6 +259,8 @@ void P(void)
 	/*P es la sumatoria del producto de valores instantaneos de tension y corriente:*/
 	for (i = 0; i < maxSampling; i++)
 		activePow += (float) voltValuesAna[i]*currValuesAna[i];
+
+	//activePow = activePow / maxSampling;
 }
 
 /*Calculo de la potencia aparente:*/

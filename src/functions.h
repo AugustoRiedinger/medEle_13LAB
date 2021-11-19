@@ -34,6 +34,7 @@ ADC_InitTypeDef 		ADC_InitStructure;
 ADC_CommonInitTypeDef 	ADC_CommonInitStructure;
 DMA_InitTypeDef 		DMA_InitStructure;
 NVIC_InitTypeDef 		NVIC_InitStructure;
+GPIO_InitTypeDef        GPIO_InitStructure;
 
 /*------------------------------------------------------------------------------
 DEFINICION CONSTANTES LCD:
@@ -86,9 +87,9 @@ typedef struct {
 DECLARACION FUNCIONES DE FUNCTIONS.C :
 ------------------------------------------------------------------------------*/
 void 	INIT_DO(GPIO_TypeDef* Port, uint32_t Pin);
-void 	INIT_ADC1DMA(uint32_t adcArray[], uint32_t bufferSize);
+void 	INIT_ADC1DMA(uint16_t* adcArray, uint32_t bufferSize);
 void 	ADC_INIT(void);
-void 	INIT_TIM3(uint32_t TimeBase, uint32_t Freq);
+void 	INIT_TIM3(uint32_t Freq);
 void	INIT_LCD_2x16(LCD_2X16_t*);
 void	CLEAR_LCD_2x16(LCD_2X16_t*);
 void	PRINT_LCD_2x16(LCD_2X16_t*, uint8_t, uint8_t, char*);

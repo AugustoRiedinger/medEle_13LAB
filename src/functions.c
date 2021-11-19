@@ -87,7 +87,7 @@ INIT_ADC
 	* @ej
 		- INIT_ADC(GPIOX, GPIO_Pin_X);
 ******************************************************************************/
-void INIT_ADC1DMA(uint32_t* adcArray, uint32_t bufferSize)
+void INIT_ADC1DMA(uint16_t* adcArray, uint32_t bufferSize)
 {
 /*Habilitacion del clock de los perficos del DMA y el ADC1::*/
 RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
@@ -122,6 +122,15 @@ DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_HalfFull;
 DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
 DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
 DMA_Init(DMA2_Stream0, &DMA_InitStructure);
+
+/*Configuracion del handler para la interrupcion:*/
+NVIC_InitStructure.NVIC_IRQChannel = DMA2_Stream0_IRQn;
+NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+NVIC_Init(&NVIC_InitStructure);
+
+DMA_ITConfig(DMA2_Stream0, DMA_IT_TC, ENABLE);
 
 /*Habilitacion del DMA:*/
 DMA_Cmd(DMA2_Stream0, ENABLE);
@@ -162,6 +171,15 @@ ADC_RegularChannelConfig(ADC1, ADC_Channel_13, 2, ADC_SampleTime_480Cycles);
 ADC_DMARequestAfterLastTransferCmd(ADC1, ENABLE);
 ADC_DMACmd(ADC1, ENABLE);
 
+RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
+
+/* PC1 para entrada analógica */
+GPIO_StructInit(&GPIO_InitStructure);
+GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_3;
+GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
+GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+GPIO_Init(GPIOC, &GPIO_InitStructure);
+
 /*Habilitacion del ADC1:*/
 ADC_Cmd(ADC1, ENABLE);
 }
@@ -176,7 +194,7 @@ INIT_TIM3
 	* @ej
 		- INIT_TIM3();
 ******************************************************************************/
-void INIT_TIM3(uint32_t TimeBase, uint32_t Freq)
+void INIT_TIM3(uint32_t Freq)
 {
 	/*Habilitacion del clock del TIM3:*/
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
@@ -189,7 +207,9 @@ void INIT_TIM3(uint32_t TimeBase, uint32_t Freq)
 //	NVIC_Init(&NVIC_InitStructure);
 
 	/*Computacion del valor del preescaler:*/
+	uint32_t TimeBase = 200e3;
 	uint16_t PrescalerValue = (uint16_t) ((SystemCoreClock / 2) / TimeBase) - 1;
+
 
 	/*Configuracion del tiempo de interrupcion:*/
 	TIM_TimeBaseStructure.TIM_Period = TimeBase / Freq - 1;
