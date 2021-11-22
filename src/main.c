@@ -43,9 +43,6 @@ DEFINICION DE VALORES PARA MAIN.C:
 /*Frecuencia de muestreo para configurar el TIM3:*/
 #define FS  5000 //[Hz]
 
-/*Frecuencia de interrupcion del systick:*/
-#define systickIntTime 0.05 //[seg]
-
 /*Frecuencia base de la red:*/
 #define baseFreq 50 //[Hz]
 
@@ -66,9 +63,6 @@ DEFINICION DE VALORES PARA MAIN.C:
 
 /*Maximo almacenamiento en un ciclo:*/
 #define maxSampling 10 * FS / baseFreq
-
-/*Ingreso al clear del display cada 200mseg:*/
-#define ticksLCD	10
 
 /*------------------------------------------------------------------------------
 DECLARACION FUNCIONES DE MAIN.C:
@@ -95,7 +89,6 @@ void COS_THETA(void);
 DECLARACION VARIABLES GLOBALES DE MAIN.C:
 ------------------------------------------------------------------------------*/
 /*Control del despachador de tareas:*/
-uint32_t lcd = 0;
 uint32_t adc = 0;
 
 /*Registro para guardar los valores digitales del ADC:*/
@@ -170,12 +163,64 @@ void DMA2_Stream0_IRQHandler(void)
 /*------------------------------------------------------------------------------
 TAREAS:
 ------------------------------------------------------------------------------*/
+/*Procesamiento de los datos otorgados por el DMA:*/
+void ADC_PROCESSING(void)
+{
+	/*Clarear el flag:*/
+	adc = 0;
+
+	/*Control de ciclos:*/
+	uint32_t i = 0;
+
+	/*Valores medios de los arreglos de tension y corriente:*/
+	float	voltMed = 0.0f;
+	float	currMed = 0.0f;
+
+	/*Pasaje de datos del arreglo general a los especificos:*/
+	for (i = 0; i < maxSampling/2; i++) {
+
+		/*Los datos de tension seran los pares:*/
+		voltValuesDig[i] = adcDigValues[2 * i];
+		/*Los datos de corriente seran los impares:*/
+		currValuesDig[i] = adcDigValues[(2 * i) + 1];
+
+		/*Adaptacion de 0 a 3V:*/
+		voltValuesAna[i] =  ((float) voltValuesDig[i] * 2.8 / 4095.0);
+		currValuesAna[i] =  ((float) currValuesDig[i] * 2.8 / 4095.0);
+
+		/*Multiplicacion para adaptar al valor real de tension:*/
+		/*3 * x = 622 => x = 207*/
+		voltValuesAna[i] = voltValuesAna[i] * 207;
+
+		/*Multiplicacion para adaptar al valor real de corriente:*/
+		/*180e-3 * 3 = 16*/
+		currValuesAna[i] = currValuesAna[i] * 16;
+
+		/*Calculo del valor medio de los arreglos:*/
+		voltMed += voltValuesAna[i];
+		currMed += currValuesAna[i];
+	}
+
+	voltMed = voltMed / (maxSampling/2);
+	currMed = currMed / (maxSampling/2);
+
+	/*Quitar valores medios; llevar a cero:*/
+	for (i = 0; i < maxSampling/2 ; i++)
+	{
+		voltValuesAna[i] = voltValuesAna[i] - voltMed;
+		currValuesAna[i] = currValuesAna[i] - currMed;
+	}
+
+	/*Mostrar los valores en el LCD:*/
+	LCD();
+
+	/*Se vuelve a iniciar el timer:*/
+	DMA_Cmd(DMA2_Stream0, ENABLE);
+	TIM_Cmd(TIM3, ENABLE);
+}
 /*Mostrar datos en el LCD:*/
 void LCD(void)
 {
-	/*Reseteo de la variable del TS:*/
-	lcd = 0;
-
 	/*Buffers para mostrar valores de variables:*/
 	char buffActivePow	[lcdBufferLen];
 	char buffApparentPow[lcdBufferLen];
@@ -220,36 +265,6 @@ void LCD(void)
 	cosTheta	= 0.0f;
 }
 
-void ADC_PROCESSING(void)
-{
-	/*Clarear el flag:*/
-	adc = 0;
-
-	/*Control de ciclos:*/
-	uint32_t i = 0;
-
-	/*Pasaje de datos del arreglo general a los especificos:*/
-	for (i = 0; i <= maxSampling; i++) {
-
-		//adcDigValues[i] = adcDigValues[i]*3/4095;
-		/*Los datos de tension seran los pares:*/
-		voltValuesDig[i] = adcDigValues[2 * i];
-		/*Los datos de corriente seran los impares:*/
-		currValuesDig[i] = adcDigValues[(2 * i) + 1];
-
-		/*Conversion y almacenamiento de dato de tension analogico de 0 a 310 Vpp:*/
-		voltValuesAna[i] = (float) (voltValuesDig[i] * maxVoltValue	/ maxDigValue - maxVoltValue / 2);
-		/*Conversion y almacenamiento de corriente analogica:*/
-		currValuesAna[i] = (float) ((currValuesDig[i] * maxHallValue / maxDigValue) * hallRes);
-	}
-
-	/*Mostrar los valores en el LCD:*/
-	LCD();
-
-	/*Se vuelve a iniciar el timer:*/
-	TIM_Cmd(TIM3, ENABLE);
-}
-
 /*Calculo de la potencia activa:*/
 void P(void)
 {
@@ -257,10 +272,10 @@ void P(void)
 	uint32_t i = 0;
 
 	/*P es la sumatoria del producto de valores instantaneos de tension y corriente:*/
-	for (i = 0; i < maxSampling; i++)
+	for (i = 0; i < maxSampling/2; i++)
 		activePow += (float) voltValuesAna[i]*currValuesAna[i];
 
-	//activePow = activePow / maxSampling;
+	activePow = activePow / (maxSampling/2);
 }
 
 /*Calculo de la potencia aparente:*/
@@ -268,7 +283,6 @@ void S(void)
 {
 	/*Variable para el conteo de ciclos:*/
 	uint32_t i = 0;
-	uint32_t k = 0;
 
 	/*Modulo de la tension:*/
 	float	 voltMod = 0.0f;
@@ -279,24 +293,20 @@ void S(void)
 	float 	 sumCurrElem = 0.0f;
 
 	/*Suma de los cuadrados de cada elemento de tension y corriente:*/
-	for (i = 0; i < maxSampling; i++)
+	for (i = 0; i < maxSampling/2; i++)
 	{
 		sumVoltElem += voltValuesAna[i]*voltValuesAna[i];
 		sumCurrElem += currValuesAna[i]*currValuesAna[i];
 	}
 
-	/*Se calculan los modulos y la potencia reactiva:*/
-	for(k = 0; k < maxSampling; k++)
-	{
-		/*Modulo de la tension:*/
-		voltMod = sqrt(sumVoltElem);
+	/*Modulo de la tension:*/
+	voltMod = sqrt(sumVoltElem/(maxSampling/2));
 
-		/*Modulo de la corriente:*/
-		currMod = sqrt(sumCurrElem);
+	/*Modulo de la corriente:*/
+	currMod = sqrt(sumCurrElem/(maxSampling/2));
 
-		/*S es el producto de los modulos de tension y corriente:*/
-		apparentPow = voltMod*currMod;
-	}
+	/*S es el producto de los modulos de tension y corriente:*/
+	apparentPow = voltMod * currMod;
 }
 
 /*Calculo de la potencia reactiva:*/
@@ -304,7 +314,7 @@ void Q(void)
 {
 	/*Q se calcula a partir del triangulo de potencias:*/
 	/*S^2 = P^2 + Q^2*/
-	reactivePow = sqrt(apparentPow*apparentPow - activePow*activePow);
+	reactivePow = sqrt((apparentPow*apparentPow) - (activePow*activePow));
 }
 
 /*Calculo del coseno de theta:*/
