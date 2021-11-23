@@ -41,28 +41,42 @@ LCD_2X16_t LCD_2X16[] = {
 DEFINICION DE VALORES PARA MAIN.C:
 ------------------------------------------------------------------------------*/
 /*Frecuencia de muestreo para configurar el TIM3:*/
-#define FS  5000 //[Hz]
+#define FS  		 5000 //[Hz]
 
 /*Frecuencia base de la red:*/
-#define baseFreq 50 //[Hz]
+#define baseFreq 	 50 //[Hz]
 
 /*Maximo del buffer para el LCD:*/
 #define lcdBufferLen 20
 
+/*Maximo valor analogico medido siempre:*/
+#define maxAnaValue  3 //[V]
+
+/*3 V equivalen a 4096 cuentas digitales:*/
+#define maxDigValue	 4096
+
 /*Voltaje maximo analogico:*/
 #define maxVoltValue 622 //[Vpp]
 
-/*Maximo voltaje del sensor efecto hall:*/
-#define maxHallValue 3 //[V]
+/*Coeficiente para adaptar la senal de tension:*/
+/*3 * x = 622 => x = 207*/
+#define voltCoef 	 maxVoltValue / maxAnaValue
 
 /*Resolucion del sensor de efecto hall:*/
-#define hallRes 180e-3 //[mv/A]
+#define hallRes 	 180e-3 //[mv/A]
 
-/*Valor maximo digital al voltaje o corriente maximo:*/
-#define maxDigValue 4095
+/*Coeficiente para adaptar la senal de corriente:*/
+/*180e-3 * 3 = 16*/
+#define currCoef  	 hallRes * maxAnaValue
 
 /*Maximo almacenamiento en un ciclo:*/
-#define maxSampling 10 * FS / baseFreq
+#define maxSampling  10 * FS / baseFreq
+
+/*Filas del promediador movil FIFO:*/
+#define row			 4
+
+/*Columnas del promediador movil FIFO:*/
+#define col			 10
 
 /*------------------------------------------------------------------------------
 DECLARACION FUNCIONES DE MAIN.C:
@@ -91,6 +105,16 @@ DECLARACION VARIABLES GLOBALES DE MAIN.C:
 /*Control del despachador de tareas:*/
 uint32_t adc = 0;
 
+/*Promediador movil FIFO con 10 elementos:*/
+/*Fila 1: potencia activa.*/
+/*Fila 2: potencia aparente.*/
+/*Fila 3: potencia reactiva.*/
+/*Fila 4: factor de potencia.*/
+uint32_t lcdFifoBuff[row][col];
+
+/*Variable para contar los elementos del promediador:*/
+uint32_t elem = 0;
+
 /*Registro para guardar los valores digitales del ADC:*/
 uint16_t adcDigValues[maxSampling];
 
@@ -103,7 +127,7 @@ float 	 voltValuesAna[maxSampling/2];
 float 	 currValuesAna[maxSampling/2];
 
 /*Variable para almacenar la potencia activa:*/
-float 	 activePow 	= 0.0f;
+float 	 activePow 	 = 0.0f;
 
 /*Variable para almacenar la potencia aparente:*/
 float 	 apparentPow = 0.0f;
@@ -112,7 +136,7 @@ float 	 apparentPow = 0.0f;
 float 	 reactivePow = 0.0f;
 
 /*Variable para almacenar el cos(theta):*/
-float	 cosTheta 	= 0.0f;
+float	 cosTheta 	 = 0.0f;
 
 int main(void)
 {
@@ -155,7 +179,7 @@ void DMA2_Stream0_IRQHandler(void)
 		/*Se habilita el flag para procesar los datos:*/
 		adc = 1;
 
-		/*Resetear el flag:*/
+		/*Resetear el flag del DMA:*/
 		DMA_ClearFlag(DMA2_Stream0,DMA_FLAG_TCIF0);
 	}
 }
@@ -185,26 +209,25 @@ void ADC_PROCESSING(void)
 		currValuesDig[i] = adcDigValues[(2 * i) + 1];
 
 		/*Adaptacion de 0 a 3V:*/
-		voltValuesAna[i] =  ((float) voltValuesDig[i] * 2.8 / 4095.0);
-		currValuesAna[i] =  ((float) currValuesDig[i] * 2.8 / 4095.0);
+		voltValuesAna[i] =  ((float) voltValuesDig[i] * maxAnaValue / maxDigValue);
+		currValuesAna[i] =  ((float) currValuesDig[i] * maxAnaValue / maxDigValue);
 
 		/*Multiplicacion para adaptar al valor real de tension:*/
-		/*3 * x = 622 => x = 207*/
-		voltValuesAna[i] = voltValuesAna[i] * 207;
+		voltValuesAna[i] = voltValuesAna[i] * voltCoef;
 
 		/*Multiplicacion para adaptar al valor real de corriente:*/
-		/*180e-3 * 3 = 16*/
-		currValuesAna[i] = currValuesAna[i] * 16;
+		currValuesAna[i] = currValuesAna[i] * currCoef;
 
-		/*Calculo del valor medio de los arreglos:*/
+		/*Se suman todos los valores analogicos para calcular el valor medio:*/
 		voltMed += voltValuesAna[i];
 		currMed += currValuesAna[i];
 	}
 
+	/*Se divide la suma de todos los valores analogicos por la cantidad de muestras:*/
 	voltMed = voltMed / (maxSampling/2);
 	currMed = currMed / (maxSampling/2);
 
-	/*Quitar valores medios; llevar a cero:*/
+	/*Quitar valores medios; llevar senal a cero:*/
 	for (i = 0; i < maxSampling/2 ; i++)
 	{
 		voltValuesAna[i] = voltValuesAna[i] - voltMed;
@@ -214,13 +237,22 @@ void ADC_PROCESSING(void)
 	/*Mostrar los valores en el LCD:*/
 	LCD();
 
-	/*Se vuelve a iniciar el timer:*/
+	/*Se vuelve a iniciar el timer y el DMA:*/
 	DMA_Cmd(DMA2_Stream0, ENABLE);
 	TIM_Cmd(TIM3, ENABLE);
 }
 /*Mostrar datos en el LCD:*/
 void LCD(void)
 {
+	/*Variable para recorrer los ciclos:*/
+	uint32_t i = 0;
+
+	/*Variables para almacenar el promedio de potencias:*/
+	uint32_t activeMed 	 = 0;
+	uint32_t apparentMed = 0;
+	uint32_t reactiveMed = 0;
+	uint32_t cosThetaMed = 0;
+
 	/*Buffers para mostrar valores de variables:*/
 	char buffActivePow	[lcdBufferLen];
 	char buffApparentPow[lcdBufferLen];
@@ -230,29 +262,43 @@ void LCD(void)
 	/*Refresco del LCD:*/
 	CLEAR_LCD_2x16(LCD_2X16);
 
-	/*Calculo de la potencia activa:*/
+	/*Implementacion del promedidador movil FIFO:*/
+	/*Guardar la potencia activa en la primer fila:*/
 	P();
+	lcdFifoBuff[0][elem] = activePow;
+
+	/*Guardar la potencia aparente en la segunda fila:*/
+	S();
+	lcdFifoBuff[1][elem] = apparentPow;
+
+	/*Guardar la potencia reactiva en la tercer fila:*/
+	Q();
+	lcdFifoBuff[2][elem] = reactivePow;
+
+	/*Guardar el factor de potencia en la cuarta fila:*/
+	COS_THETA();
+	lcdFifoBuff[3][elem] = cosTheta;
+
+	/*Efectuar el promedio de los elementos en el promediador:*/
+	for (i = 0; i < elem; i++)
+	{
+		activeMed   += lcdFifoBuff[0][i];
+		apparentMed += lcdFifoBuff[1][i];
+		reactiveMed += lcdFifoBuff[2][i];
+		cosThetaMed += lcdFifoBuff[3][i];
+	}
 
 	/*Mostrar potencia activa:*/
-	sprintf(buffActivePow, "P=%.1fW", activePow);
+	sprintf(buffActivePow, "P=%.1fW", activeMed);
 	PRINT_LCD_2x16(LCD_2X16, 0, 0, buffActivePow);
 
-	/*Calculo de la potencia aparente:*/
-	S();
-
 	/*Mostrar potencia aparente:*/
-	sprintf(buffApparentPow, "S=%.1fVA", apparentPow);
+	sprintf(buffApparentPow, "S=%.1fVA", apparentMed);
 	PRINT_LCD_2x16(LCD_2X16, 0, 1, buffApparentPow);
 
-	/*Calculo de la potencia reactiva:*/
-	Q();
-
 	/*Mostrar potencia reactiva:*/
-	sprintf(buffReactivePow, "Q=%.1fVAR", reactivePow);
+	sprintf(buffReactivePow, "Q=%.1fVAR", reactiveMed);
 	PRINT_LCD_2x16(LCD_2X16, 8, 0, buffReactivePow);
-
-	/*Calculo del cos(theta):*/
-	COS_THETA();
 
 	/*Mostrar cos(theta):*/
 	sprintf(buffCosTheta, "fdp=%.1f", cosTheta);
@@ -263,6 +309,12 @@ void LCD(void)
 	apparentPow = 0.0f;
 	reactivePow = 0.0f;
 	cosTheta	= 0.0f;
+
+	/*Reseteo de la variable de elementos del promediador:*/
+	if (elem >= col)
+		elem = 0;
+	else
+		elem++;
 }
 
 /*Calculo de la potencia activa:*/
